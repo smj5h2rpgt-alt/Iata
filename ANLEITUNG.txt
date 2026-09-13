@@ -1,0 +1,30 @@
+IATA Lernkarten – GitHub Pages Installation
+
+1. Öffne github.com und melde dich an.
+2. Erstelle ein neues Repository, z. B. "iata-lernkarte".
+3. Lade ALLE Dateien aus diesem Paket in das Repository hoch:
+   - index.html
+   - manifest.webmanifest
+   - service-worker.js
+   - icon-180.png
+   - icon-192.png
+   - icon-512.png
+   - .nojekyll
+4. Öffne im Repository:
+   Settings > Pages
+5. Unter "Build and deployment":
+   Source: Deploy from a branch
+   Branch: main
+   Ordner: / (root)
+   Danach "Save".
+6. Nach kurzer Zeit erscheint die HTTPS-Adresse deiner Seite.
+
+Auf dem iPhone:
+1. Die GitHub-Pages-Adresse in Safari öffnen.
+2. Einmal vollständig laden lassen.
+3. Teilen > Zum Home-Bildschirm.
+4. Die Lern-App über das neue Symbol starten.
+5. Danach funktioniert sie auch offline.
+
+Alle 168 IATA-Lernkarten sind direkt in index.html enthalten.
+Die Offline-Funktion übernimmt service-worker.js.

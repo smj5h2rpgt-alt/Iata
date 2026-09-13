@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="IATA Lernen">
+<meta name="theme-color" content="#f3f5f8">
+<title>IATA Lernkarten</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:#f3f5f8;color:#111}
+body{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:max(18px,env(safe-area-inset-top)) max(18px,env(safe-area-inset-right)) max(18px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left))}
+.app{width:100%;max-width:650px}
+.header{text-align:center;margin-bottom:18px}
+.header h1{margin:0 0 10px;font-size:30px}
+.stats{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;font-size:14px;color:#555}
+.card{background:#fff;border-radius:22px;padding:30px 22px;box-shadow:0 10px 35px rgba(0,0,0,.12);text-align:center}
+.country{font-size:18px;color:#666;margin-bottom:12px;font-weight:700}
+.label{color:#777;font-size:14px;margin-bottom:8px}
+.airport-name{font-size:30px;font-weight:800;min-height:84px;display:flex;align-items:center;justify-content:center;margin-bottom:22px}
+input{width:100%;max-width:260px;font-size:28px;text-align:center;text-transform:uppercase;letter-spacing:10px;padding:14px;border-radius:12px;border:2px solid #ccc;outline:none;background:#fff;color:#111}
+input:focus{border-color:#111}
+.buttons{margin-top:20px;display:grid;grid-template-columns:1fr;gap:12px}
+button{border:none;border-radius:14px;padding:15px 18px;font-size:17px;cursor:pointer;font-weight:800;min-height:52px}
+#checkButton{background:#111;color:#fff}
+#dontKnowButton{background:#ececec;color:#111}
+#nextButton{background:#dfe7ff;color:#111;display:none}
+#restartButton{background:#111;color:#fff;width:100%}
+.feedback{min-height:74px;margin-top:20px;font-size:21px;font-weight:800}
+.correct{color:#178c3b} .wrong{color:#c62828} .unknown{color:#d17a00}
+.answer{margin-top:8px;font-size:17px;font-weight:500;color:#333}
+.solution-code{display:inline-block;margin-top:6px;font-size:30px;font-weight:900;letter-spacing:6px}
+.progress-container{margin-top:20px;height:10px;background:#ddd;border-radius:99px;overflow:hidden}
+.progress{height:100%;width:0;background:#222;transition:width .25s ease}
+.result-screen{display:none}
+.result-screen h2{font-size:30px;margin-top:0}
+.big-result{font-size:50px;font-weight:900;margin:18px 0}
+@media(min-width:520px){.buttons{grid-template-columns:1fr 1fr}#nextButton{grid-column:1/-1}}
+</style>
+
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="IATA Lernen">
+
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <h1>✈️ IATA Lernkarten</h1>
+    <div class="stats">
+      <span id="counter">Karte 1 / 168</span>
+      <span>✅ Richtig: <strong id="correctCount">0</strong></span>
+      <span>❌ Falsch: <strong id="wrongCount">0</strong></span>
+    </div>
+  </div>
+
+  <div class="card" id="quizCard">
+    <div class="country" id="country"></div>
+    <div class="label">Welcher IATA-Code gehört zu diesem Flughafen?</div>
+    <div class="airport-name" id="airportName">Flughafen</div>
+    <input type="text" id="iataInput" maxlength="3" autocomplete="off" autocorrect="off" spellcheck="false"
+           autocapitalize="characters" inputmode="text" placeholder="---">
+    <div class="buttons">
+      <button id="checkButton">Prüfen</button>
+      <button id="dontKnowButton">Ich weiß es nicht</button>
+      <button id="nextButton">Nächste Karte →</button>
+    </div>
+    <div class="feedback" id="feedback"></div>
+    <div class="progress-container"><div class="progress" id="progress"></div></div>
+  </div>
+
+  <div class="card result-screen" id="resultScreen">
+    <h2>Training beendet 🎉</h2>
+    <div class="big-result" id="finalScore"></div>
+    <p id="finalText"></p>
+    <button id="restartButton">Neu starten</button>
+  </div>
+</div>
+
+<script>
+const airports = [{"code": "BER", "name": "Berlin Brandenburg", "country": "🇩🇪 Deutschland"}, {"code": "BRE", "name": "Bremen", "country": "🇩🇪 Deutschland"}, {"code": "CGN", "name": "Köln/Bonn", "country": "🇩🇪 Deutschland"}, {"code": "DRS", "name": "Dresden", "country": "🇩🇪 Deutschland"}, {"code": "DTM", "name": "Dortmund", "country": "🇩🇪 Deutschland"}, {"code": "DUS", "name": "Düsseldorf", "country": "🇩🇪 Deutschland"}, {"code": "ERF", "name": "Erfurt/Weimar", "country": "🇩🇪 Deutschland"}, {"code": "FDH", "name": "Friedrichshafen", "country": "🇩🇪 Deutschland"}, {"code": "FKB", "name": "Karlsruhe/Baden-Baden", "country": "🇩🇪 Deutschland"}, {"code": "FMM", "name": "Memmingen", "country": "🇩🇪 Deutschland"}, {"code": "FMO", "name": "Münster/Osnabrück", "country": "🇩🇪 Deutschland"}, {"code": "FRA", "name": "Frankfurt am Main", "country": "🇩🇪 Deutschland"}, {"code": "GWT", "name": "Sylt", "country": "🇩🇪 Deutschland"}, {"code": "HAJ", "name": "Hannover", "country": "🇩🇪 Deutschland"}, {"code": "HAM", "name": "Hamburg", "country": "🇩🇪 Deutschland"}, {"code": "HDF", "name": "Heringsdorf/Usedom", "country": "🇩🇪 Deutschland"}, {"code": "HHN", "name": "Frankfurt-Hahn", "country": "🇩🇪 Deutschland"}, {"code": "KSF", "name": "Kassel-Calden", "country": "🇩🇪 Deutschland"}, {"code": "LBC", "name": "Lübeck", "country": "🇩🇪 Deutschland"}, {"code": "LEJ", "name": "Leipzig/Halle", "country": "🇩🇪 Deutschland"}, {"code": "MHG", "name": "Mannheim", "country": "🇩🇪 Deutschland"}, {"code": "MUC", "name": "München", "country": "🇩🇪 Deutschland"}, {"code": "NRN", "name": "Weeze", "country": "🇩🇪 Deutschland"}, {"code": "NUE", "name": "Nürnberg", "country": "🇩🇪 Deutschland"}, {"code": "PAD", "name": "Paderborn/Lippstadt", "country": "🇩🇪 Deutschland"}, {"code": "RLG", "name": "Rostock-Laage", "country": "🇩🇪 Deutschland"}, {"code": "SCN", "name": "Saarbrücken", "country": "🇩🇪 Deutschland"}, {"code": "STR", "name": "Stuttgart", "country": "🇩🇪 Deutschland"}, {"code": "AHO", "name": "Alghero-Fertilia", "country": "🇮🇹 Italien"}, {"code": "AOT", "name": "Aosta", "country": "🇮🇹 Italien"}, {"code": "AOI", "name": "Ancona-Falconara", "country": "🇮🇹 Italien"}, {"code": "BDS", "name": "Brindisi", "country": "🇮🇹 Italien"}, {"code": "BGY", "name": "Mailand-Bergamo", "country": "🇮🇹 Italien"}, {"code": "BLQ", "name": "Bologna", "country": "🇮🇹 Italien"}, {"code": "BZO", "name": "Bozen", "country": "🇮🇹 Italien"}, {"code": "BRI", "name": "Bari", "country": "🇮🇹 Italien"}, {"code": "CAG", "name": "Cagliari", "country": "🇮🇹 Italien"}, {"code": "CIY", "name": "Comiso", "country": "🇮🇹 Italien"}, {"code": "CTA", "name": "Catania", "country": "🇮🇹 Italien"}, {"code": "CUF", "name": "Cuneo", "country": "🇮🇹 Italien"}, {"code": "FLR", "name": "Florenz", "country": "🇮🇹 Italien"}, {"code": "GOA", "name": "Genua", "country": "🇮🇹 Italien"}, {"code": "LIN", "name": "Mailand-Linate", "country": "🇮🇹 Italien"}, {"code": "MXP", "name": "Mailand-Malpensa", "country": "🇮🇹 Italien"}, {"code": "NAP", "name": "Neapel", "country": "🇮🇹 Italien"}, {"code": "OLB", "name": "Olbia", "country": "🇮🇹 Italien"}, {"code": "PNL", "name": "Pantelleria", "country": "🇮🇹 Italien"}, {"code": "PMF", "name": "Parma", "country": "🇮🇹 Italien"}, {"code": "PMO", "name": "Palermo", "country": "🇮🇹 Italien"}, {"code": "PSA", "name": "Pisa", "country": "🇮🇹 Italien"}, {"code": "PSR", "name": "Pescara", "country": "🇮🇹 Italien"}, {"code": "REG", "name": "Reggio Calabria", "country": "🇮🇹 Italien"}, {"code": "RMI", "name": "Rimini", "country": "🇮🇹 Italien"}, {"code": "FCO", "name": "Rom-Fiumicino", "country": "🇮🇹 Italien"}, {"code": "CIA", "name": "Rom-Ciampino", "country": "🇮🇹 Italien"}, {"code": "SUF", "name": "Lamezia Terme", "country": "🇮🇹 Italien"}, {"code": "TPS", "name": "Trapani", "country": "🇮🇹 Italien"}, {"code": "TSF", "name": "Treviso", "country": "🇮🇹 Italien"}, {"code": "TRS", "name": "Triest", "country": "🇮🇹 Italien"}, {"code": "TRN", "name": "Turin", "country": "🇮🇹 Italien"}, {"code": "VCE", "name": "Venedig", "country": "🇮🇹 Italien"}, {"code": "VRN", "name": "Verona", "country": "🇮🇹 Italien"}, {"code": "GRZ", "name": "Graz", "country": "🇦🇹 Österreich"}, {"code": "INN", "name": "Innsbruck", "country": "🇦🇹 Österreich"}, {"code": "KLU", "name": "Klagenfurt", "country": "🇦🇹 Österreich"}, {"code": "LNZ", "name": "Linz", "country": "🇦🇹 Österreich"}, {"code": "SZG", "name": "Salzburg", "country": "🇦🇹 Österreich"}, {"code": "VIE", "name": "Wien-Schwechat", "country": "🇦🇹 Österreich"}, {"code": "ACH", "name": "St. Gallen-Altenrhein", "country": "🇨🇭 Schweiz"}, {"code": "BRN", "name": "Bern-Belp", "country": "🇨🇭 Schweiz"}, {"code": "BSL", "name": "Basel-Mulhouse", "country": "🇨🇭 Schweiz"}, {"code": "GVA", "name": "Genf", "country": "🇨🇭 Schweiz"}, {"code": "LUG", "name": "Lugano-Agno", "country": "🇨🇭 Schweiz"}, {"code": "SIR", "name": "Sion", "country": "🇨🇭 Schweiz"}, {"code": "ZRH", "name": "Zürich", "country": "🇨🇭 Schweiz"}, {"code": "AMS", "name": "Amsterdam Schiphol", "country": "🇳🇱 Niederlande"}, {"code": "EIN", "name": "Eindhoven", "country": "🇳🇱 Niederlande"}, {"code": "GRQ", "name": "Groningen Eelde", "country": "🇳🇱 Niederlande"}, {"code": "MST", "name": "Maastricht Aachen", "country": "🇳🇱 Niederlande"}, {"code": "RTM", "name": "Rotterdam Den Haag", "country": "🇳🇱 Niederlande"}, {"code": "ANR", "name": "Antwerpen", "country": "🇧🇪 Belgien"}, {"code": "BRU", "name": "Brüssel-Zaventem", "country": "🇧🇪 Belgien"}, {"code": "CRL", "name": "Brüssel-Charleroi", "country": "🇧🇪 Belgien"}, {"code": "LGG", "name": "Lüttich (Liège)", "country": "🇧🇪 Belgien"}, {"code": "OST", "name": "Ostende-Brügge", "country": "🇧🇪 Belgien"}, {"code": "ATH", "name": "Athen", "country": "🇬🇷 Griechenland"}, {"code": "CFU", "name": "Korfu", "country": "🇬🇷 Griechenland"}, {"code": "CHQ", "name": "Chania", "country": "🇬🇷 Griechenland"}, {"code": "EFL", "name": "Kefalonia", "country": "🇬🇷 Griechenland"}, {"code": "HER", "name": "Heraklion", "country": "🇬🇷 Griechenland"}, {"code": "JMK", "name": "Mykonos", "country": "🇬🇷 Griechenland"}, {"code": "JSI", "name": "Skiathos", "country": "🇬🇷 Griechenland"}, {"code": "JTR", "name": "Santorini", "country": "🇬🇷 Griechenland"}, {"code": "KGS", "name": "Kos", "country": "🇬🇷 Griechenland"}, {"code": "KLX", "name": "Kalamata", "country": "🇬🇷 Griechenland"}, {"code": "KVA", "name": "Kavala", "country": "🇬🇷 Griechenland"}, {"code": "MJT", "name": "Lesbos/Mytilene", "country": "🇬🇷 Griechenland"}, {"code": "JKH", "name": "Chios", "country": "🇬🇷 Griechenland"}, {"code": "PAS", "name": "Paros", "country": "🇬🇷 Griechenland"}, {"code": "PVK", "name": "Preveza/Aktion", "country": "🇬🇷 Griechenland"}, {"code": "RHO", "name": "Rhodos", "country": "🇬🇷 Griechenland"}, {"code": "SKG", "name": "Thessaloniki", "country": "🇬🇷 Griechenland"}, {"code": "SMI", "name": "Samos", "country": "🇬🇷 Griechenland"}, {"code": "VOL", "name": "Volos/Nea Anchialos", "country": "🇬🇷 Griechenland"}, {"code": "ZTH", "name": "Zakynthos", "country": "🇬🇷 Griechenland"}, {"code": "ECN", "name": "Ercan (Nordzypern)", "country": "🇨🇾 Zypern"}, {"code": "LCA", "name": "Larnaka", "country": "🇨🇾 Zypern"}, {"code": "PFO", "name": "Paphos", "country": "🇨🇾 Zypern"}, {"code": "ADA", "name": "Adana", "country": "🇹🇷 Türkei"}, {"code": "ADB", "name": "Izmir", "country": "🇹🇷 Türkei"}, {"code": "ASR", "name": "Kayseri", "country": "🇹🇷 Türkei"}, {"code": "AYT", "name": "Antalya", "country": "🇹🇷 Türkei"}, {"code": "BJV", "name": "Milas-Bodrum", "country": "🇹🇷 Türkei"}, {"code": "DIY", "name": "Diyarbakır", "country": "🇹🇷 Türkei"}, {"code": "DLM", "name": "Dalaman", "country": "🇹🇷 Türkei"}, {"code": "EDO", "name": "Balıkesir", "country": "🇹🇷 Türkei"}, {"code": "ESB", "name": "Ankara", "country": "🇹🇷 Türkei"}, {"code": "GZP", "name": "Alanya-Gazipaşa", "country": "🇹🇷 Türkei"}, {"code": "GZT", "name": "Gaziantep", "country": "🇹🇷 Türkei"}, {"code": "ISL", "name": "Istanbul-Atatürk", "country": "🇹🇷 Türkei"}, {"code": "IST", "name": "Istanbul Airport", "country": "🇹🇷 Türkei"}, {"code": "NAV", "name": "Nevşehir", "country": "🇹🇷 Türkei"}, {"code": "SAW", "name": "Istanbul-Sabiha Gökçen", "country": "🇹🇷 Türkei"}, {"code": "TZX", "name": "Trabzon", "country": "🇹🇷 Türkei"}, {"code": "VAN", "name": "Van", "country": "🇹🇷 Türkei"}, {"code": "AJA", "name": "Ajaccio", "country": "🇫🇷 Frankreich"}, {"code": "BIA", "name": "Bastia", "country": "🇫🇷 Frankreich"}, {"code": "BVA", "name": "Beauvais-Tillé", "country": "🇫🇷 Frankreich"}, {"code": "BOD", "name": "Bordeaux", "country": "🇫🇷 Frankreich"}, {"code": "BES", "name": "Brest", "country": "🇫🇷 Frankreich"}, {"code": "LIL", "name": "Lille", "country": "🇫🇷 Frankreich"}, {"code": "LYS", "name": "Lyon-Saint Exupéry", "country": "🇫🇷 Frankreich"}, {"code": "MRS", "name": "Marseille", "country": "🇫🇷 Frankreich"}, {"code": "MPL", "name": "Montpellier", "country": "🇫🇷 Frankreich"}, {"code": "NTE", "name": "Nantes", "country": "🇫🇷 Frankreich"}, {"code": "NCE", "name": "Nizza", "country": "🇫🇷 Frankreich"}, {"code": "CDG", "name": "Paris-Charles de Gaulle", "country": "🇫🇷 Frankreich"}, {"code": "ORY", "name": "Paris-Orly", "country": "🇫🇷 Frankreich"}, {"code": "SXB", "name": "Straßburg", "country": "🇫🇷 Frankreich"}, {"code": "TLS", "name": "Toulouse", "country": "🇫🇷 Frankreich"}, {"code": "ACE", "name": "Lanzarote", "country": "🇪🇸 Spanien"}, {"code": "AGP", "name": "Málaga", "country": "🇪🇸 Spanien"}, {"code": "ALC", "name": "Alicante", "country": "🇪🇸 Spanien"}, {"code": "BCN", "name": "Barcelona", "country": "🇪🇸 Spanien"}, {"code": "BIO", "name": "Bilbao", "country": "🇪🇸 Spanien"}, {"code": "FUE", "name": "Fuerteventura", "country": "🇪🇸 Spanien"}, {"code": "GRO", "name": "Girona", "country": "🇪🇸 Spanien"}, {"code": "IBZ", "name": "Ibiza", "country": "🇪🇸 Spanien"}, {"code": "LPA", "name": "Gran Canaria", "country": "🇪🇸 Spanien"}, {"code": "MAD", "name": "Madrid", "country": "🇪🇸 Spanien"}, {"code": "MAH", "name": "Menorca", "country": "🇪🇸 Spanien"}, {"code": "PMI", "name": "Palma de Mallorca", "country": "🇪🇸 Spanien"}, {"code": "SCQ", "name": "Santiago de Compostela", "country": "🇪🇸 Spanien"}, {"code": "SVQ", "name": "Sevilla", "country": "🇪🇸 Spanien"}, {"code": "TFN", "name": "Teneriffa Nord", "country": "🇪🇸 Spanien"}, {"code": "TFS", "name": "Teneriffa Süd", "country": "🇪🇸 Spanien"}, {"code": "VLC", "name": "Valencia", "country": "🇪🇸 Spanien"}, {"code": "ZAZ", "name": "Zaragoza", "country": "🇪🇸 Spanien"}, {"code": "FAO", "name": "Faro", "country": "🇵🇹 Portugal"}, {"code": "FLW", "name": "Flores", "country": "🇵🇹 Portugal"}, {"code": "FNC", "name": "Madeira/Funchal", "country": "🇵🇹 Portugal"}, {"code": "HOR", "name": "Horta", "country": "🇵🇹 Portugal"}, {"code": "LIS", "name": "Lissabon", "country": "🇵🇹 Portugal"}, {"code": "OPO", "name": "Porto", "country": "🇵🇹 Portugal"}, {"code": "PDL", "name": "Ponta Delgada", "country": "🇵🇹 Portugal"}, {"code": "PXO", "name": "Porto Santo", "country": "🇵🇹 Portugal"}, {"code": "SMA", "name": "Santa Maria", "country": "🇵🇹 Portugal"}, {"code": "TER", "name": "Terceira/Lajes", "country": "🇵🇹 Portugal"}];
+
+function shuffle(array){
+  for(let i=array.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [array[i],array[j]]=[array[j],array[i]];
+  }
+  return array;
+}
+
+let quizAirports=shuffle([...airports]);
+let currentIndex=0, correct=0, wrong=0, answered=false;
+
+const airportName=document.getElementById("airportName");
+const country=document.getElementById("country");
+const input=document.getElementById("iataInput");
+const checkButton=document.getElementById("checkButton");
+const dontKnowButton=document.getElementById("dontKnowButton");
+const nextButton=document.getElementById("nextButton");
+const feedback=document.getElementById("feedback");
+const counter=document.getElementById("counter");
+const correctCount=document.getElementById("correctCount");
+const wrongCount=document.getElementById("wrongCount");
+const progress=document.getElementById("progress");
+const quizCard=document.getElementById("quizCard");
+const resultScreen=document.getElementById("resultScreen");
+
+function showCard(){
+  answered=false;
+  const airport=quizAirports[currentIndex];
+  airportName.textContent=airport.name;
+  country.textContent=airport.country;
+  input.value="";
+  input.disabled=false;
+  feedback.innerHTML="";
+  feedback.className="feedback";
+  checkButton.style.display="block";
+  dontKnowButton.style.display="block";
+  nextButton.style.display="none";
+  counter.textContent=`Karte ${currentIndex+1} / ${quizAirports.length}`;
+  progress.style.width=`${(currentIndex/quizAirports.length)*100}%`;
+  setTimeout(()=>input.focus(),150);
+}
+
+function revealResult(kind, correctAnswer){
+  if(kind==="correct"){
+    feedback.innerHTML="✅ Richtig!";
+    feedback.className="feedback correct";
+  } else if(kind==="wrong"){
+    feedback.innerHTML=`❌ Falsch<div class="answer">Richtiger Code:<div class="solution-code">${correctAnswer}</div></div>`;
+    feedback.className="feedback wrong";
+  } else {
+    feedback.innerHTML=`🤷 Nicht gewusst<div class="answer">Richtiger Code:<div class="solution-code">${correctAnswer}</div></div>`;
+    feedback.className="feedback unknown";
+  }
+  correctCount.textContent=correct;
+  wrongCount.textContent=wrong;
+  input.disabled=true;
+  checkButton.style.display="none";
+  dontKnowButton.style.display="none";
+  nextButton.style.display="block";
+}
+
+function checkAnswer(){
+  if(answered)return;
+  const userAnswer=input.value.trim().toUpperCase();
+  if(userAnswer.length!==3){
+    feedback.textContent="Bitte einen 3-stelligen IATA-Code eingeben.";
+    feedback.className="feedback wrong";
+    return;
+  }
+  answered=true;
+  const correctAnswer=quizAirports[currentIndex].code;
+  if(userAnswer===correctAnswer){correct++;revealResult("correct",correctAnswer);}
+  else{wrong++;revealResult("wrong",correctAnswer);}
+}
+
+function dontKnowAnswer(){
+  if(answered)return;
+  answered=true;
+  wrong++;
+  revealResult("unknown",quizAirports[currentIndex].code);
+}
+
+function nextCard(){
+  currentIndex++;
+  if(currentIndex>=quizAirports.length) finishQuiz();
+  else showCard();
+}
+
+function finishQuiz(){
+  quizCard.style.display="none";
+  resultScreen.style.display="block";
+  const percent=Math.round((correct/quizAirports.length)*100);
+  document.getElementById("finalScore").textContent=`${percent}%`;
+  document.getElementById("finalText").innerHTML=`✅ ${correct} richtig<br><br>❌ ${wrong} falsch / nicht gewusst<br><br>📚 ${quizAirports.length} Karten insgesamt`;
+}
+
+function restartQuiz(){
+  quizAirports=shuffle([...airports]);
+  currentIndex=0;correct=0;wrong=0;answered=false;
+  correctCount.textContent="0";wrongCount.textContent="0";
+  resultScreen.style.display="none";quizCard.style.display="block";
+  showCard();
+}
+
+checkButton.addEventListener("click",checkAnswer);
+dontKnowButton.addEventListener("click",dontKnowAnswer);
+nextButton.addEventListener("click",nextCard);
+document.getElementById("restartButton").addEventListener("click",restartQuiz);
+
+input.addEventListener("keydown",e=>{
+  if(e.key==="Enter"){ if(!answered) checkAnswer(); else nextCard(); }
+});
+input.addEventListener("input",function(){
+  this.value=this.value.replace(/[^a-zA-Z]/g,"").toUpperCase().slice(0,3);
+});
+
+showCard();
+</script>
+
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./service-worker.js").catch(() => {});
+  });
+}
+</script>
+
+</body>
+</html>
