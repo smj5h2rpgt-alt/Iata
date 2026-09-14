@@ -1,12 +1,11 @@
 {
   "name": "IATA Lernkarten",
   "short_name": "IATA Lernen",
-  "description": "Offline-Lernkarten für IATA-Flughafencodes",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f3f5f8",
-  "theme_color": "#f3f5f8",
+  "background_color": "#dcefff",
+  "theme_color": "#0b4f8a",
   "orientation": "portrait",
   "icons": [
     {
